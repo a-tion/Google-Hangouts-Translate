@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+  <!-- Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *      
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License
+-->
+ <ModulePrefs title="Hangout Starter">
+   <Require feature="rpc" />
+   <Require feature="views" />
+   <Require feature="locked-domain" />
+ </ModulePrefs>
+ <Content type="html">
+ <![CDATA[     
+
+<html>
+<style type="text/css">
+	p { 
+		color: #000;  
+		padding:0px 0px 10px 10px;
+	}
+	
+	ul li{
+		display: block;
+		visibility: hidden;
+	}
+	
+	ul li:hover{
+		display: block;
+		visibility: visible;
+	}
+	.child{
+		position:absolute;
+		bottom:2px;
+		left:2px;
+		right:2px;
+	}
+	.parent{
+		position:relative;
+		float:right;
+		z-index:2;
+		margin: 0 0 0 0;
+		padding: 0;
+		border: 1px solid rgba(0,0,0,0.5);
+		border-radius: 5px 5px 2px 2px;
+		background: rgba(0,0,0,0.25);
+		box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px rgba(255,255,255,0.3), inset 0 5px rgba(255,255,255,0.2), inset 0 5px 20px rgba(255,255,255,0.25), inset 0 -15px 30px rgba(0,0,0,0.3);
+		-o-box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px rgba(255,255,255,0.3), inset 0 5px rgba(255,255,255,0.2), inset 0 5px 20px rgba(255,255,255,0.25), inset 0 -15px 30px rgba(0,0,0,0.3);
+		-webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px rgba(255,255,255,0.3), inset 0 5px rgba(255,255,255,0.2), inset 0 5px 20px rgba(255,255,255,0.25), inset 0 -15px 30px rgba(0,0,0,0.3);
+		-moz-box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px rgba(255,255,255,0.3), inset 0 5px rgba(255,255,255,0.2), inset 0 5px 20px rgba(255,255,255,0.25), inset 0 -15px 30px rgba(0,0,0,0.3);
+	}
+
+	#settings{
+		position:relative;
+		right: 5px;
+		bottom: 5px;
+	}
+	
+	#settings_menu{
+		position:absolute;
+		bottom:0px;
+		right:10px;
+	}
+	
+	#drop_menu{
+		padding-right:2px;
+		padding-left:2px;
+		padding-top:10px;
+		padding-bottom:10px;
+		position:relative;
+		visibility: hidden;
+		-webkit-box-shadow: 4px 3px 28px 0px rgba(50, 50, 50, 0.34);
+		-moz-box-shadow:    4px 3px 28px 0px rgba(50, 50, 50, 0.34);
+		box-shadow:         4px 3px 28px 0px rgba(50, 50, 50, 0.34);
+		z-index:3;
+		margin: 0 0 0 0;
+		border: 1px solid rgba(0,0,0,0.2);
+		border-radius: 1px 1px 1px 1px;
+		background: rgba(255,255,255,0.45);
+	}
+	
+    #start_button {
+    border: 0;
+    background-color:transparent;
+    padding: 0;
+    }
+    .interim {
+    color: gray;
+    }
+    .final {
+    color: black;
+    padding-right: 3px;
+    }
+    #buttons {
+    margin: 10px 0;
+    position: relative;
+    top: -50px;
+    }
+</style>
+
+<script>
+
+var recognizing = false;
+var ignore_onend;
+var start_timestamp;
+
+var recognition = new webkitSpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = true;
+
+recognition.onstart = function() {
+  recognizing = true;
+  start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-animate.gif';
+};
+  
+recognition.onerror = function(event) {
+  if (event.error == 'no-speech') {
+    start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif';
+    ignore_onend = true;
+  }
+  if (event.error == 'audio-capture') {
+    start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif';
+    ignore_onend = true;
+  }
+  if (event.error == 'not-allowed') {
+    if (event.timeStamp - start_timestamp < 100) {
+    } else {
+    }
+    ignore_onend = true;
+  }
+};
+  
+recognition.onend = function() {
+  recognizing = false;
+  if (ignore_onend) {
+    return;
+  }
+  start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif';
+  if (!final_transcript) {
+    return;
+  }
+  
+};
+  
+
+recognition.onresult = function(event) {
+  if (typeof(event.results) == 'undefined') {
+    recognition.onend = null;
+    recognition.stop();
+    upgrade();
+    return;
+  }
+  recognition.onresult = function (event) {
+  for (var i = event.resultIndex; i < event.results.length; ++i) {
+	if (event.results[i].isFinal) {
+		inputArea.value = event.results[i][0].transcript;
+		submitSP();
+	}
+  }
+  };
+};
+
+function upgrade() {
+  start_button.style.visibility = 'hidden';
+}
+
+var two_line = /\n\n/g;
+var one_line = /\n/g;
+function linebreak(s) {
+  return s.replace(two_line, '<p></p>').replace(one_line, '<br>');
+}
+
+var first_char = /\S/;
+function capitalize(s) {
+  return s.replace(first_char, function(m) { return m.toUpperCase(); });
+}
+
+function startButton(event) {
+  if (recognizing) {
+    recognition.stop();
+    return;
+  }
+  final_transcript = '';
+  recognition.lang = localLang;
+  recognition.start();
+  ignore_onend = false;
+  inputArea.value = '';
+  start_img.src = 'https://www.google.com/intl/en/chrome/assets/common/images/content/mic-slash.gif';
+  start_timestamp = event.timeStamp;
+}
+
+</script>
+
+<body style="background-color: #CBE6FF">
+
+<script src="//plus.google.com/hangouts/_/api/v1/hangout.js"></script>
+<script src="//xycs130test.appspot.com/static/app.js"></script>
+
+<div id="container">
+
+	<div class="parent" id="content" style="height:97%;width:30%;margin-top:8px">
+		<p id="outputArea" style="font-size:80%;">No message</p>
+		<div class="child">
+			<div id="settings">
+				<ul>
+				<li>
+				<div id="settings_menu">
+					<div id="drop_menu" style="width:100%" 
+					onmouseout="hide_menu()" onmouseover="display_menu(this)">
+						<div style="padding-left:8px" >
+							Lang Trans From:
+							<br> 
+							<select name="langBox" id="langArea">
+									  <option value="en">English</option>
+									  <option value="zh-CN">Chinese Simplified</option>
+									  <option value="ja">Japanese</option>
+									  <option value="es">Spanish</option>
+									  <option value="hi">Hindi</option>
+							</select>
+							<br>
+							<input class="button" type="button" value="ChangeLangFrom" id="changeLang" onClick="changeL()" />
+							<br>
+							Lang Trans To:
+							<br>
+							<select name="langBoxTo" id="langAreaTo">
+									  <option value="en">English</option>
+									  <option value="zh-CN">Chinese Simplified</option>
+									  <option value="ja">Japanese</option>
+									  <option value="es">Spanish</option>
+									  <option value="hi">Hindi</option>
+							</select>
+							<br>
+							<input class="button" type="button" value="ChangeLangTo" id="changeLangTo" onClick="changeLTo()" />
+						</div>
+						<!-- <p id="outputLangS">Current Speech Language: en</p> -->
+						<button id="start_button" onclick="startButton(event)"><img alt="Start" id="start_img"
+								src="https://www.google.com/intl/en/chrome/assets/common/images/content/mic.gif"></button>
+					</div>
+				</div>
+				</li>
+				</ul>
+
+				<a href="#" id="menu_button">
+					<img src="//xycs130test.appspot.com/static/settings.png" width="13" height="13" align="right"
+					onmouseover="display_menu_with_icon(this)"
+					onmouseout="this.src='//xycs130test.appspot.com/static/settings.png'"/>
+				</a>
+
+			</div>
+			<textarea id="inputArea" style="width:100%;height:10%;"></textarea>
+			<input class="button" type="button" value="Send" id="submitB" onClick="submit()" />
+		</div>
+	</div>
+
+</div>
+
+</body>
+</html>
+]]>
+  </Content>
+</Module>
