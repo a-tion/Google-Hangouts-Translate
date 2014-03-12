@@ -1,22 +1,62 @@
 /* settings drop-up menu */
 
-function display_menu_with_icon(p) {
-  p.src='//xycs130test.appspot.com/static/settingshover.png';
-  window.document.getElementById("drop_menu").style.visibility="visible";
+function display_menu_with_icon(p){
+p.src='//xycs130test.appspot.com/static/settingshover.png';
+window.document.getElementById("drop_menu").style.visibility="visible";
 }
 
-function display_menu() {
-  window.document.getElementById("drop_menu").style.visibility="visible";
+function display_menu(){
+window.document.getElementById("drop_menu").style.visibility="visible";
 }
 
-function hide_menu() {
-  window.document.getElementById("drop_menu").style.visibility="hidden";
+function hide_menu(){
+window.document.getElementById("drop_menu").style.visibility="hidden";
+}
+
+/* Sound */
+var gooddaySoundURL =
+    '//xycs130test.appspot.com/static/happybirthday.wav';
+
+var gooddaySound = gapi.hangout.av.effects.createAudioResource(
+    gooddaySoundURL).createSound({loop: false, localOnly: false});
+
+// Note that we are playing a global audio event,
+// so other hangouts will hear it.
+function sayGoodDay() {
+    gooddaySound.play();
 }
 
 /* translate */
 
+var showOriginalTextBool = true;
 var arbitraryResource = null;
 var arbitraryOverlay = null;
+var transparentTextNum = 1024;
+var n = 10;
+var transparentTextArray = new Array();
+for (var i = 0; i < n; i++) {
+    var obj = new Object();
+    obj.transparentTextName = "transparentText" + i;
+    obj.displayStyle = 'none';
+    transparentTextArray.push(obj);
+}
+
+var originalTextArray = new Array();
+for (var j = 0; j < n; j++) {
+    var obj = new Object();
+    obj.originalTextName = "showOriginalText" + j;
+    obj.displayStyle = 'block';
+    originalTextArray.push(obj);
+}
+
+function toggle_visibility(num) {
+     var e = document.getElementById(transparentTextArray[num].transparentTextName);  
+     e.style.display = 'block';
+     transparentTextArray[num].displayStyle = 'block';
+     var elem = document.getElementById(originalTextArray[num].originalTextName);
+     elem.style.display = 'none';
+     originalTextArray[num].displayStyle = 'none';
+}
 
 //para:
 //message:the content which needs to be traslated(string)
@@ -24,6 +64,7 @@ var arbitraryOverlay = null;
 //toL:the language traslate to(string for language code in translate API)
 //translate from the same lang to the same one will be a bad request
 function translated(message,fromL,toL) {
+	//var queries = document.getElementById("translateFromTextArea").value;
 	var request = "https://www.googleapis.com/language/translate/v2?key=AIzaSyBga9xCOSR4UgO7RElncJJJzNFWS3XvLjs&source="+fromL+"&target="+toL+"&q=" + message;
 	var xml = httpGet(request);
 	xml = JSON.parse(xml);
@@ -39,19 +80,21 @@ function rawurlencode (str) {
 }
 
 function httpGet(theUrl) {
-  var xmlHttp = null;
-  xmlHttp = new XMLHttpRequest();
-  xmlHttp.open("GET", theUrl, false);
-  xmlHttp.send(null);
-  return xmlHttp.responseText;
+    var xmlHttp = null;
+    xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("GET", theUrl, false);
+    xmlHttp.send(null);
+    return xmlHttp.responseText;
 }
 
-/* hangouts */
+/* hangouts*/
 
 function showDefaultFeed() {
   currentHighlightedParticipantId = null;
+
   var feed = gapi.hangout.layout.getDefaultVideoFeed();
   var canvas = gapi.hangout.layout.getVideoCanvas();
+
   canvas.setVideoFeed(feed);
   canvas.setWidth(window.innerWidth*0.69);
   canvas.setPosition(0, 0);
@@ -68,8 +111,6 @@ function createTextOverlay(string) {
 
   // Draw text
   context.font = '15px Arial';
-  //context.lineWidth = 6;
-  //context.lineStyle = '#000';
   context.fillStyle = 'rgba(255,255,255,1.0)';
   context.fillColor = '#ffff00';
   context.textAlign = 'center';
@@ -104,6 +145,7 @@ var localMessageList_ts=new Array();
 var localLangTo="en";
 var latest_speech="";
 var latest_speech_ts=0;
+var SPLangTo="en";
 
 function fullMessage(userId,messageId,lang,message,fromSpeech) {
   this.userId=userId; //local user's ID (string)
@@ -119,6 +161,7 @@ function fullMessage(userId,messageId,lang,message,fromSpeech) {
 function changeL() {
   var lang = document.getElementById("langArea").value;
   localLang=lang;
+  gapi.hangout.data.setValue(localId,lang); //update language setting to server
 }
 
 function changeLTo() {
@@ -138,6 +181,7 @@ function submit() {
   messageId++; //get new message ID
   localId = gapi.hangout.getLocalParticipantId(); //user ID
   newMessage = new fullMessage(localId,messageId,localLang,message,false); //make a new message object with full information
+  //M="id=" + newMessage.userId +" messageId=" +messageId.toString()+" lang="+localLang+" message="+message
   gapi.hangout.data.setValue(localId+messageId,JSON.stringify(newMessage));
   //change the shared state in the server
   //with key=localID+messageID as a unique ID for each message
@@ -150,6 +194,7 @@ function submitSP() {
   messageId++; //get new message ID
   localId = gapi.hangout.getLocalParticipantId(); //user ID
   newMessage = new fullMessage(localId,messageId,localLang,message,true); //make a new message object with full information
+  //M="id=" + newMessage.userId +" messageId=" +messageId.toString()+" lang="+localLang+" message="+message
   gapi.hangout.data.setValue(localId+messageId,JSON.stringify(newMessage));
   //change the shared state in the server
   //with key=localID+messageID as a unique ID for each message
@@ -167,78 +212,116 @@ function compare(a,b) {
 }
 
 
+
 //the callback funtion used when the state changed (got new messages)
 var onStateChange = function(eventObj) {
-  newMessageWithTime=new Array();
-  var n=0;
-    for (var i = 0; i < eventObj.addedKeys.length; ++i) {
-      newMessageWithTime[n]=eventObj.addedKeys[i];
-      console.log(n);
-      console.log(newMessageWithTime[n].key);
-      console.log(newMessageWithTime[n].value);
-      console.log(newMessageWithTime[n].timestamp);
-      n++;
-    }
-  //get all the new messages
-  newMessageWithTime.sort(compare); //sort the new messages based on timestamp
-  console.log("finished sort");
-
-
-  for (var i=0; i<newMessageWithTime.length; ++i) {
-    localMessageList[localMessageListN]=JSON.parse(newMessageWithTime[i].value);
-    localMessageList_ts[localMessageListN]=newMessageWithTime[i].timestamp;
-    console.log(localMessageList[localMessageListN]);
-    localMessageListN++;
+newMessageWithTime=new Array();
+var n=0;
+  for (var i = 0; i < eventObj.addedKeys.length; ++i) {
+    if (gapi.hangout.getParticipantById(eventObj.addedKeys[i].key)==null || eventObj.addedKeys[i].key=="baosui") { // message update
+  		newMessageWithTime[n]=eventObj.addedKeys[i];
+  		n++;
+  	}
   }
-  //update the local message list
- //change the output for message log
-  var output="";
-  var latest_speech_i=-1;
+  //get all the new messages
+
+newMessageWithTime.sort(compare); //sort the new messages based on timestamp
+for (var i=0; i<newMessageWithTime.length; ++i) {
+localMessageList[localMessageListN]=JSON.parse(newMessageWithTime[i].value);
+localMessageList_ts[localMessageListN]=newMessageWithTime[i].timestamp;
+localMessageListN++;
+}
+//update the local message list
+
+//change the output for message log
+var output="";
+var latest_speech_i=-1;
+if((localMessageListN-1)%10 == 0) {
+    for(var i = 0; i < n; i++) {
+      originalTextArray[i].displayStyle = 'block';
+      transparentTextArray[i].displayStyle = 'none';
+    }
+  }
+if(showOriginalTextBool) {
   for (var i=localMessageListN-10; i<localMessageListN; i++) {
     if (i<0) continue;
     userName=gapi.hangout.getParticipantById(localMessageList[i].userId).person.displayName;
-    console.log("baosui");
-    console.log(userName+" Speaks in "+localMessageList[i].lang+ " : "+localMessageList[i].message + "<br>");
-    output=output+userName+" Speaks in "+localMessageList[i].lang+ " : "+localMessageList[i].message + "<br>";
-    console.log("Translate from " + localMessageList[i].lang + " to " +localLang+": "+localMessageList[i].message+"<br>");
+    output=output+"<div id=\"" +transparentTextArray[i%10].transparentTextName+ "\" style=\"display:" +transparentTextArray[i%10].displayStyle+ "\">"+userName+" Speaks in "+localMessageList[i].lang+ ": "+localMessageList[i].message+ "</div>" + "<div id=\""+originalTextArray[i%10].originalTextName+"\" onclick=\"toggle_visibility("+(i%10)+");\" style=\"opacity:0.3;display:" +originalTextArray[i%10].displayStyle+ "\">Show Original Text</div>";
     if (localMessageList[i].lang!=localLang) output=output+"Translate from " + localMessageList[i].lang + " to " +localLang+": "+translated(localMessageList[i].message,localMessageList[i].lang,localLang)+"<br>";
     else {
       if(localMessageList[i].lang!=localLangTo) output=output+"Translate from " + localMessageList[i].lang + " to " +localLangTo+": "+translated(localMessageList[i].message,localMessageList[i].lang,localLangTo)+"<br>";
       else output=output+"Translate from " + localMessageList[i].lang + " to " +localLangTo+": "+localMessageList[i].message+"<br>";
     }
-    console.log("current version 1");
     if (localMessageList[i].fromSpeech==true  && localMessageList_ts[i]>latest_speech_ts && localMessageList[i].userId == gapi.hangout.getLocalParticipantId()) {
-      console.log("update latest speech "+localMessageList[i].message);
-      console.log(localMessageList[i].userId);
-      console.log(gapi.hangout.getLocalParticipantId());
       latest_speech_ts=localMessageList_ts[i];
       latest_speech=localMessageList[i].message;
       latest_speech_i=i;
     }
   }
-
-  if (latest_speech!="" && latest_speech_i!=-1) {
-    var subtitle;
-    var i=latest_speech_i;
-    if (localMessageList[i].lang!=localLang) subtitle=translated(localMessageList[i].message,localMessageList[i].lang,localLang);
+} else {
+  for (var i=localMessageListN-10; i<localMessageListN; i++) {
+    if (i<0) continue;
+    userName=gapi.hangout.getParticipantById(localMessageList[i].userId).person.displayName;
+    output=output+userName+" Speaks in "+localMessageList[i].lang+ " : "+localMessageList[i].message + "<br>";
+    if (localMessageList[i].lang!=localLang)
+    output=output+"Translate from " + localMessageList[i].lang + " to " +localLang+": "+translated(localMessageList[i].message,localMessageList[i].lang,localLang)+"<br>";
     else {
-      if(localMessageList[i].lang!=localLangTo) subtitle=translated(localMessageList[i].message,localMessageList[i].lang,localLangTo);
-      else subtitle=localMessageList[i].message;
+      if(localMessageList[i].lang!=localLangTo)
+      output=output+"Translate from " + localMessageList[i].lang + " to " +localLangTo+": "+translated(localMessageList[i].message,localMessageList[i].lang,localLangTo)+"<br>";
+      else
+       output=output+"Translate from " + localMessageList[i].lang + " to " +localLangTo+": "+localMessageList[i].message+"<br>";
     }
-    console.log("create subtitle " + subtitle);
-    createSubtitle(subtitle);
+    if (localMessageList[i].fromSpeech==true  && localMessageList_ts[i]>latest_speech_ts && localMessageList[i].userId == gapi.hangout.getLocalParticipantId()) {
+    latest_speech_ts=localMessageList_ts[i];
+    latest_speech=localMessageList[i].message;
+    latest_speech_i=i;
+    }
   }
-  if (output!="") document.getElementById("outputArea").innerHTML=output;
 }
 
+var pList=gapi.hangout.getParticipants();
 
+if (latest_speech!="" && latest_speech_i!=-1 && pList.length==2) {
+  var subtitle;
+  var i=latest_speech_i;
+  if (gapi.hangout.data.getValue(pList[0].id) && gapi.hangout.data.getValue(pList[0].id)!=SPLangTo && gapi.hangout.data.getValue(pList[0].id)!=localLang) {
+    SPLangTo=gapi.hangout.data.getValue(pList[0].id);
+  }
+  if (gapi.hangout.data.getValue(pList[1].id) && gapi.hangout.data.getValue(pList[1].id)!=SPLangTo && gapi.hangout.data.getValue(pList[1].id)!=localLang) {
+    SPLangTo=gapi.hangout.data.getValue(pList[1].id);
+  }
+  if (localMessageList[i].lang!=SPLangTo)
+    subtitle=translated(localMessageList[i].message,localMessageList[i].lang,SPLangTo);
+  else
+    subtitle=localMessageList[i].message;
+  createSubtitle(subtitle);
+  }
+
+  if (output!="") 
+    document.getElementById("outputArea").innerHTML=output;
+}
+
+function changeShowOriginalText() {
+  if(showOriginalTextBool) {
+    showOriginalTextBool = false;
+  } else {
+    showOriginalTextBool = true;
+  }
+  gapi.hangout.data.setValue("baosui","changeShowOriginalText"+transparentTextNum);
+  transparentTextNum++;
+}
 //initialization
 function init() {
   // When API is ready...                                                         
   gapi.hangout.onApiReady.add(
       function(eventObj) {
-    	  gapi.hangout.data.onStateChanged.add(onStateChange); //add callback function
-        showDefaultFeed();
+      //  if (eventObj.isApiReady) {
+      //    document.getElementById('showParticipants')
+      //      .style.visibility = 'visible';
+      //  } //sample app's code, commented
+	  gapi.hangout.data.onStateChanged.add(onStateChange); //add callback function
+	  gapi.hangout.av.setLocalParticipantVideoMirrored(false);
+    showDefaultFeed();
       });
 }
 
@@ -248,8 +331,6 @@ gadgets.util.registerOnLoadHandler(init);
 window.addEventListener('resize', resizeWindow);
 
 function resizeWindow() {
-  console.log("Window Width: " + window.innerWidth);
-  console.log("Window Height: " + window.innerHeight);
 
   var feed = gapi.hangout.layout.getDefaultVideoFeed();
   var canvas = gapi.hangout.layout.getVideoCanvas();
@@ -258,6 +339,4 @@ function resizeWindow() {
   canvas.setWidth(window.innerWidth*0.69);
   canvas.setPosition(0, 0);
   canvas.setVisible(true);
-
-  console.log("canvas size changed !")
 }
